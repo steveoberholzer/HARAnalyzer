@@ -514,7 +514,7 @@ tr.row-0   td{background:#f5f5f5!important}
 .m-head,.m-options,.m-connect,.m-trace{background:#f5f5f5;color:#424242}
 
 /* Timing */
-.num{text-align:right;font-family:Consolas,monospace;white-space:nowrap}
+.num{font-family:Consolas,monospace;white-space:nowrap}
 .dim{color:#bbb}
 .slow{color:#ca5010;font-weight:600}
 .very-slow{color:#d13438;font-weight:700}
