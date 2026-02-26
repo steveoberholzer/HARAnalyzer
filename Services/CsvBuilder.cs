@@ -141,6 +141,86 @@ public static class CsvBuilder
         return Bom + sb;
     }
 
+    // ── Compare entry points ────────────────────────────────────────────────
+
+    /// <summary>Key-value summary for a CompareResult.</summary>
+    public static string BuildCompareSummary(CompareResult r)
+    {
+        var sb = new StringBuilder();
+        Header(sb, "Metric", "Value");
+        Row(sb, "File A (Baseline)",   r.FileNameA);
+        Row(sb, "Path A",              r.FilePathA);
+        Row(sb, "File B (New)",        r.FileNameB);
+        Row(sb, "Path B",              r.FilePathB);
+        Row(sb, "Compared At",         r.ComparedAt.ToString("yyyy-MM-dd HH:mm:ss"));
+        Row(sb, "Total Requests A",    r.TotalInA.ToString());
+        Row(sb, "Total Requests B",    r.TotalInB.ToString());
+        Row(sb, "Matched",             r.MatchedCount.ToString());
+        Row(sb, "Regressions",         r.RegressionCount.ToString());
+        Row(sb, "Improvements",        r.ImprovementCount.ToString());
+        Row(sb, "Only in A",           r.OnlyInACount.ToString());
+        Row(sb, "Only in B",           r.OnlyInBCount.ToString());
+        Row(sb, "Overall Delta (ms)",  r.OverallDeltaMs.ToString("F1"));
+        return Bom + sb;
+    }
+
+    /// <summary>Flat diff table — used by All Differences, Regressions, Improvements.</summary>
+    public static string BuildCompareDiffs(IEnumerable<RequestDiff> diffs)
+    {
+        var list = diffs.ToList();
+        var sb   = new StringBuilder();
+        Header(sb,
+            "#", "Method", "Host", "Base URL",
+            "A Avg (ms)", "B Avg (ms)", "Delta (ms)", "% Change",
+            "Count A", "Count B", "Category");
+
+        for (var i = 0; i < list.Count; i++)
+        {
+            var d = list[i];
+            Row(sb,
+                (i + 1).ToString(),
+                d.Method,
+                d.Host,
+                d.BaseUrl,
+                d.AvgTotalMsA.ToString("F1"),
+                d.AvgTotalMsB.ToString("F1"),
+                d.DeltaMs.ToString("F1"),
+                double.IsNaN(d.PctChange) ? "N/A" : d.PctChange.ToString("F1") + "%",
+                d.CountA.ToString(),
+                d.CountB.ToString(),
+                d.Category.ToString());
+        }
+
+        return Bom + sb;
+    }
+
+    /// <summary>Per-domain aggregates for a comparison.</summary>
+    public static string BuildCompareByDomain(CompareResult r)
+    {
+        var groups = r.Diffs
+            .GroupBy(d => d.Host)
+            .Select(g => new
+            {
+                Domain       = g.Key,
+                Matched      = g.Count(),
+                SumDelta     = g.Sum(d => d.DeltaMs),
+                AvgDelta     = g.Average(d => d.DeltaMs),
+                Regressions  = g.Count(d => d.Category == DiffCategory.Regression),
+                Improvements = g.Count(d => d.Category == DiffCategory.Improvement),
+            })
+            .OrderByDescending(g => Math.Abs(g.SumDelta));
+
+        var sb = new StringBuilder();
+        Header(sb, "Domain", "Matched", "Sum Delta (ms)", "Avg Delta (ms)", "Regressions", "Improvements");
+
+        foreach (var g in groups)
+            Row(sb, g.Domain, g.Matched.ToString(),
+                g.SumDelta.ToString("F1"), g.AvgDelta.ToString("F1"),
+                g.Regressions.ToString(), g.Improvements.ToString());
+
+        return Bom + sb;
+    }
+
     // ── CSV helpers ────────────────────────────────────────────────────────
 
     // UTF-8 BOM so Excel auto-detects encoding

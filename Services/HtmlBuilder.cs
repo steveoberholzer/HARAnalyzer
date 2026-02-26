@@ -224,6 +224,143 @@ public static class HtmlBuilder
         return Page("All Requests", sb.ToString());
     }
 
+    // ── Compare entry points ───────────────────────────────────────────────
+
+    public static string BuildCompareSummary(CompareResult r)
+    {
+        var sb = new StringBuilder();
+        sb.Append("<h1>Comparison Summary</h1>");
+
+        sb.Append("<div class='cards'>");
+        Card(sb, "Matched",       r.MatchedCount.ToString("N0"),     "");
+        Card(sb, "Regressions",   r.RegressionCount.ToString("N0"),  r.RegressionCount > 0 ? "error" : "ok");
+        Card(sb, "Improvements",  r.ImprovementCount.ToString("N0"), r.ImprovementCount > 0 ? "ok" : "");
+        Card(sb, "Only in A",     r.OnlyInACount.ToString("N0"),     "");
+        Card(sb, "Only in B",     r.OnlyInBCount.ToString("N0"),     "");
+        Card(sb, "Sum Δ (ms)",    DeltaBadge(r.OverallDeltaMs),      "");
+        sb.Append("</div>");
+
+        sb.Append("<h2>Files Compared</h2><table><thead><tr><th>File</th><th>A (Baseline)</th><th>B (New)</th></tr></thead><tbody>");
+        sb.Append($"<tr><th>Name</th><td>{H(r.FileNameA)}</td><td>{H(r.FileNameB)}</td></tr>");
+        sb.Append($"<tr><th>Path</th><td><code>{H(r.FilePathA)}</code></td><td><code>{H(r.FilePathB)}</code></td></tr>");
+        sb.Append($"<tr><th>Total Requests</th><td class='num'>{r.TotalInA:N0}</td><td class='num'>{r.TotalInB:N0}</td></tr>");
+        sb.Append($"<tr><th>Compared At</th><td colspan='2'>{r.ComparedAt:yyyy-MM-dd HH:mm:ss}</td></tr>");
+        sb.Append("</tbody></table>");
+
+        return Page("Compare Summary", sb.ToString());
+    }
+
+    public static string BuildCompareDiffTable(string title, List<RequestDiff> diffs)
+    {
+        var sb = new StringBuilder();
+        sb.Append($"<h1>{H(title)} ({diffs.Count:N0})</h1>");
+
+        if (diffs.Count == 0)
+        {
+            sb.Append("<div class='empty'><p>No data.</p></div>");
+            return Page(title, sb.ToString());
+        }
+
+        sb.Append("<table><thead><tr>");
+        sb.Append("<th>#</th><th>Method</th><th>A (ms)</th><th>B (ms)</th><th>Delta</th><th>% Change</th><th>URL</th>");
+        sb.Append("</tr></thead><tbody>");
+
+        for (var i = 0; i < diffs.Count; i++)
+        {
+            var d = diffs[i];
+            var rowClass = d.Category == DiffCategory.Regression  ? " class='row-5xx'" :
+                           d.Category == DiffCategory.Improvement ? " class='row-improved'" : "";
+
+            var countHintA = d.CountA > 1 ? $" <span class='dim'>(avg {d.CountA})</span>" : "";
+            var countHintB = d.CountB > 1 ? $" <span class='dim'>(avg {d.CountB})</span>" : "";
+
+            sb.Append($"<tr{rowClass}>");
+            sb.Append($"<td class='num dim'>{i + 1}</td>");
+            sb.Append($"<td>{MethodBadge(d.Method)}</td>");
+            sb.Append($"<td class='num'>{FormatMs(d.AvgTotalMsA)}{countHintA}</td>");
+            sb.Append($"<td class='num'>{FormatMs(d.AvgTotalMsB)}{countHintB}</td>");
+            sb.Append($"<td class='num'>{DeltaBadge(d.DeltaMs)}</td>");
+            sb.Append($"<td class='num'>{PctBadge(d.PctChange)}</td>");
+            sb.Append($"<td class='url-cell'><span class='url' title='{H(d.BaseUrl)}'>{H(Truncate(d.BaseUrl, 90))}</span></td>");
+            sb.Append("</tr>");
+        }
+
+        sb.Append("</tbody></table>");
+        return Page(title, sb.ToString());
+    }
+
+    public static string BuildCompareOnlyIn(string title, string fileName, List<AnalysisEntry> entries)
+    {
+        var sb = new StringBuilder();
+        sb.Append($"<h1>{H(title)} — {H(fileName)} ({entries.Count:N0})</h1>");
+        sb.Append(TimingTable(entries));
+        return Page(title, sb.ToString());
+    }
+
+    public static string BuildCompareByDomain(CompareResult r)
+    {
+        var groups = r.Diffs
+            .GroupBy(d => d.Host)
+            .Select(g => new
+            {
+                Domain       = g.Key,
+                Matched      = g.Count(),
+                SumDelta     = g.Sum(d => d.DeltaMs),
+                AvgDelta     = g.Average(d => d.DeltaMs),
+                Regressions  = g.Count(d => d.Category == DiffCategory.Regression),
+                Improvements = g.Count(d => d.Category == DiffCategory.Improvement),
+            })
+            .OrderByDescending(g => Math.Abs(g.SumDelta))
+            .ToList();
+
+        var sb = new StringBuilder();
+        sb.Append("<h1>Compare — By Domain</h1>");
+
+        if (groups.Count == 0)
+        {
+            sb.Append("<div class='empty'><p>No matched requests to group by domain.</p></div>");
+            return Page("Compare By Domain", sb.ToString());
+        }
+
+        sb.Append("<table><thead><tr>");
+        sb.Append("<th>Domain</th><th>Matched</th><th>Sum Δ (ms)</th><th>Avg Δ (ms)</th><th>Regressions</th><th>Improvements</th>");
+        sb.Append("</tr></thead><tbody>");
+
+        foreach (var g in groups)
+        {
+            sb.Append("<tr>");
+            sb.Append($"<td><code>{H(g.Domain)}</code></td>");
+            sb.Append($"<td class='num'>{g.Matched:N0}</td>");
+            sb.Append($"<td class='num'>{DeltaBadge(g.SumDelta)}</td>");
+            sb.Append($"<td class='num'>{DeltaBadge(Math.Round(g.AvgDelta, 1))}</td>");
+            sb.Append($"<td class='num{(g.Regressions > 0 ? " error" : "")}'>{g.Regressions:N0}</td>");
+            sb.Append($"<td class='num{(g.Improvements > 0 ? " ok" : "")}'>{g.Improvements:N0}</td>");
+            sb.Append("</tr>");
+        }
+
+        sb.Append("</tbody></table>");
+        return Page("Compare By Domain", sb.ToString());
+    }
+
+    // ── Compare helpers ───────────────────────────────────────────────────
+
+    private static string DeltaBadge(double deltaMs)
+    {
+        if (Math.Abs(deltaMs) < 0.05) return "<span class='dim'>—</span>";
+        var cls   = deltaMs > 0 ? "delta-reg" : "delta-imp";
+        var sign  = deltaMs > 0 ? "+" : "";
+        return $"<span class='{cls}'>{sign}{FormatMs(deltaMs)}</span>";
+    }
+
+    private static string PctBadge(double pct)
+    {
+        if (double.IsNaN(pct)) return "<span class='dim'>N/A</span>";
+        if (Math.Abs(pct) < 0.05) return "<span class='dim'>—</span>";
+        var cls  = pct > 0 ? "delta-reg" : "delta-imp";
+        var sign = pct > 0 ? "+" : "";
+        return $"<span class='{cls}'>{sign}{pct:F1}%</span>";
+    }
+
     // ── Shared table builder ───────────────────────────────────────────────
 
     private static string TimingTable(List<AnalysisEntry> rows, bool highlightTtfb = false)
@@ -404,5 +541,11 @@ tr.row-0   td{background:#f5f5f5!important}
 .spark-bar{width:10px;border-radius:2px 2px 0 0;background:#0078d4;min-height:2px}
 .spark-bar.warn{background:#ca5010}
 .spark-bar.error{background:#d13438}
+
+/* Compare */
+tr.row-improved td{background:#efffef!important}
+.delta-reg{color:#d13438;font-weight:600;font-family:Consolas,monospace}
+.delta-imp{color:#107c10;font-weight:600;font-family:Consolas,monospace}
+.ok{color:#107c10}
 ";
 }

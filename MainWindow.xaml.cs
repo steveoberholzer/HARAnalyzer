@@ -66,6 +66,39 @@ public partial class MainWindow : Window
             await LoadFileAsync(_currentFilePath);
     }
 
+    private async void MenuCompare_Click(object sender, RoutedEventArgs e)
+    {
+        var dlgA = new OpenFileDialog { Title = "Select Baseline HAR File (A)", Filter = "HAR Files (*.har)|*.har|All Files (*.*)|*.*" };
+        if (dlgA.ShowDialog() != true) return;
+
+        var dlgB = new OpenFileDialog { Title = "Select New HAR File for Comparison (B)", Filter = "HAR Files (*.har)|*.har|All Files (*.*)|*.*" };
+        if (dlgB.ShowDialog() != true) return;
+
+        SetBusy(true, $"Comparing {Path.GetFileName(dlgA.FileName)} vs {Path.GetFileName(dlgB.FileName)}…");
+        try
+        {
+            var harA = await HarParser.ParseAsync(dlgA.FileName);
+            var harB = await HarParser.ParseAsync(dlgB.FileName);
+            var compareResult = await Task.Run(() =>
+            {
+                var a = HarAnalyzerService.Analyze(harA, dlgA.FileName);
+                var b = HarAnalyzerService.Analyze(harB, dlgB.FileName);
+                return HarCompareService.Compare(a, b);
+            });
+            new CompareWindow(compareResult).Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not compare HAR files:\n\n{ex.Message}", "Compare Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            SetBusy(false);
+            SetStatus("Ready.");
+        }
+    }
+
     private async Task LoadFileAsync(string path)
     {
         if (!File.Exists(path))
