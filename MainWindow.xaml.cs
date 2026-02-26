@@ -66,6 +66,20 @@ public partial class MainWindow : Window
             await LoadFileAsync(_currentFilePath);
     }
 
+    private void MenuTrim_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentResult == null || _currentFilePath == null) return;
+
+        if (!_currentResult.Entries.Any(e2 => e2.Started > DateTime.MinValue))
+        {
+            MessageBox.Show("This HAR file has no timestamp data — trimming by time is not possible.",
+                "Cannot Trim", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        new TrimWindow(_currentResult, _currentFilePath) { Owner = this }.ShowDialog();
+    }
+
     private async void MenuCompare_Click(object sender, RoutedEventArgs e)
     {
         var dlgA = new OpenFileDialog { Title = "Select Baseline HAR File (A)", Filter = "HAR Files (*.har)|*.har|All Files (*.*)|*.*" };
@@ -123,6 +137,7 @@ public partial class MainWindow : Window
 
             Title = $"HAR Analyzer — {result.FileName}";
             MenuReload.IsEnabled = true;
+            MenuTrim.IsEnabled   = true;
             SetStatus($"Loaded {result.FileName}  ·  {result.TotalEntries:N0} requests  ·  {result.TimeSpanCovered:mm\\:ss} duration");
 
             // Auto-select the Summary node

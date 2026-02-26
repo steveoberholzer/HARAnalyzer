@@ -19,6 +19,7 @@
             <MenuItem x:Name="FileMenu" Header="_File">
                 <MenuItem x:Name="MenuOpen" Header="_Open…" InputGestureText="Ctrl+O" Click="MenuOpen_Click"/>
                 <MenuItem x:Name="MenuCompare" Header="Compare Two Files…" Click="MenuCompare_Click"/>
+                <MenuItem x:Name="MenuTrim"    Header="Trim HAR…"            Click="MenuTrim_Click" IsEnabled="False"/>
                 <Separator/>
                 <!-- MRU items injected here at runtime; hidden when list is empty -->
                 <Separator x:Name="SepMru" Visibility="Collapsed"/>

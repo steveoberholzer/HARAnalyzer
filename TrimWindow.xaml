@@ -1,0 +1,78 @@
+<Window x:Class="HARAnalyzer.TrimWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Trim HAR File"
+        Width="680" Height="500"
+        MinWidth="520" MinHeight="380"
+        ResizeMode="CanResizeWithGrip"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Instruction -->
+        <TextBlock Grid.Row="0" Margin="0,0,0,10" TextWrapping="Wrap" FontSize="13"
+                   Text="Click the first time bucket to KEEP. All earlier requests will be removed from the saved file. The original file is not modified."/>
+
+        <!-- Bucket grid -->
+        <DataGrid Grid.Row="1"
+                  x:Name="BucketsGrid"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserSortColumns="False"
+                  CanUserReorderColumns="False"
+                  CanUserResizeRows="False"
+                  SelectionMode="Single"
+                  SelectionUnit="FullRow"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  BorderThickness="1"
+                  BorderBrush="#d0d0d0"
+                  FontSize="13"
+                  SelectionChanged="BucketsGrid_SelectionChanged">
+
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsRemoved}" Value="True">
+                            <Setter Property="Foreground" Value="#bbbbbb"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Offset"      Binding="{Binding Offset}"    Width="70"/>
+                <DataGridTextColumn Header="Start Time"  Binding="{Binding StartTime}" Width="90"/>
+                <DataGridTextColumn Header="Requests"    Binding="{Binding Requests}"  Width="80"/>
+                <DataGridTextColumn Header="Total Time"  Binding="{Binding TotalTime}" Width="100"/>
+                <DataGridTextColumn Header="Will Keep"   Binding="{Binding WillKeep}"  Width="85">
+                    <DataGridTextColumn.HeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="ToolTip" Value="Total requests kept if this row is the starting point"/>
+                        </Style>
+                    </DataGridTextColumn.HeaderStyle>
+                </DataGridTextColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Status -->
+        <TextBlock Grid.Row="2" x:Name="StatusLabel"
+                   Margin="0,10,0,10" FontSize="13" FontStyle="Italic" Foreground="#555"
+                   Text="Select a row to preview the trim."/>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+            <Button x:Name="BtnSave" Content="Save Trimmed HAR…"
+                    IsEnabled="False" Width="155" Height="30" Margin="0,0,10,0"
+                    Click="BtnSave_Click"/>
+            <Button Content="Cancel" Width="80" Height="30" Click="BtnCancel_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
