@@ -183,6 +183,22 @@ Everything else is **Negligible**.
 
 All nodes support the same **right-click → Export to CSV / Copy as CSV** as the main window.
 
+### Excel export
+
+The Compare window has an **Export → Export to Excel…** menu item that writes a single formatted `.xlsx` workbook covering all sections at once — no need to export each node separately.
+
+| Sheet | Contents |
+|---|---|
+| **Summary** | Key-value metadata for both files (request counts, overall delta, etc.) |
+| **Regressions** | Diff table; all rows shaded red |
+| **Improvements** | Diff table; all rows shaded green |
+| **All Differences** | Every matched endpoint; rows colour-coded by category |
+| **Only in A** | Full request detail for endpoints exclusive to the baseline |
+| **Only in B** | Full request detail for endpoints exclusive to the new capture |
+| **By Domain** | Domain rollup; rows shaded red/green by net delta direction |
+
+Every sheet includes a **frozen header row**, **auto-filter** on every column, and numeric columns formatted as `#,##0.0` (or `+0.0%` for % Change). URL columns are capped at a fixed width to keep the workbook manageable.
+
 ### Compare CSV schemas
 
 **Compare Summary** — key/value pairs covering both files, counts, and overall delta.
@@ -278,6 +294,7 @@ HARAnalyzer/
     ├── HarWriter.cs                 Trims HAR JSON in-place via JsonNode (preserves all fields)
     ├── HtmlBuilder.cs               Generates self-contained HTML reports
     ├── CsvBuilder.cs                Generates RFC-4180 CSV (UTF-8 + BOM)
+    ├── ExcelBuilder.cs              Generates multi-sheet .xlsx workbooks (ClosedXML)
     └── MruService.cs                Persists MRU list to %AppData%\HARAnalyzer\mru.json
 ```
 
