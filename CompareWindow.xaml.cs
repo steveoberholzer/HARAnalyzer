@@ -205,6 +205,38 @@ public partial class CompareWindow : Window
         return true;
     }
 
+    // ── Export menu ────────────────────────────────────────────────────────
+
+    private async void MenuExportExcel_Click(object sender, RoutedEventArgs e)
+    {
+        var baseName = $"{Path.GetFileNameWithoutExtension(_result.FileNameA)}" +
+                       $"-vs-{Path.GetFileNameWithoutExtension(_result.FileNameB)}";
+
+        var dlg = new SaveFileDialog
+        {
+            Title      = "Export Comparison to Excel",
+            Filter     = "Excel Workbook (*.xlsx)|*.xlsx|All Files (*.*)|*.*",
+            FileName   = $"{baseName}-comparison.xlsx",
+            DefaultExt = ".xlsx",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            SetStatus("Generating Excel workbook…");
+            var bytes = await Task.Run(() => HARAnalyzer.Services.ExcelBuilder.Build(_result));
+            await File.WriteAllBytesAsync(dlg.FileName, bytes);
+            SetStatus($"Exported → {dlg.FileName}");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Failed to export Excel workbook.\n\n{ex.Message}",
+                "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            SetStatus("Export failed.");
+        }
+    }
+
     // ── View menu ──────────────────────────────────────────────────────────
 
     private void MenuExpandAll_Click(object sender, RoutedEventArgs e)

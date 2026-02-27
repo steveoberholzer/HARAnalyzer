@@ -16,6 +16,9 @@
                 <MenuItem Header="Expand All"   Click="MenuExpandAll_Click"/>
                 <MenuItem Header="Collapse All" Click="MenuCollapseAll_Click"/>
             </MenuItem>
+            <MenuItem Header="_Export">
+                <MenuItem Header="Export to Excel…" Click="MenuExportExcel_Click"/>
+            </MenuItem>
         </Menu>
 
         <!-- Status bar -->
